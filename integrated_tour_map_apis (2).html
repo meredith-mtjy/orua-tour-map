@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tour Intelligence Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 2px;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .api-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+        
+        .api-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .api-indicator.connected {
+            background: #4CAF50;
+            box-shadow: 0 0 8px #4CAF50;
+        }
+        
+        .api-indicator.loading {
+            background: #FF9500;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .container {
+            display: flex;
+            height: calc(100vh - 140px);
+        }
+        
+        .controls {
+            width: 360px;
+            background: rgba(45, 45, 45, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(102, 126, 234, 0.3);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+            background: rgba(51, 51, 51, 0.5);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .control-group h3 {
+            margin: 0 0 15px 0;
+            color: #667eea;
+            font-size: 1.1em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .tour-story-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .tour-story-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .tour-story-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .tour-story-btn.playing {
+            background: #ff4757;
+            color: white;
+        }
+        
+        .artist-info {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        
+        .artist-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .artist-stat:last-child {
+            border-bottom: none;
+        }
+        
+        .artist-stat-label {
+            color: #bbb;
+            font-size: 0.9em;
+        }
+        
+        .artist-stat-value {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+        
+        .venue-rec {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #00d4ff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .venue-rec:hover {
+            background: rgba(0, 212, 255, 0.2);
+            transform: translateX(5px);
+        }
+        
+        .venue-rec-name {
+            font-weight: 600;
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+        
+        .venue-rec-location {
+            font-size: 0.9em;
+            color: #bbb;
+            margin-bottom: 5px;
+        }
+        
+        .venue-rec-score {
+            font-size: 0.85em;
+            color: #4CAF50;
+        }
+        
+        .comparable-artist {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(51, 51, 51, 0.6);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .comparable-artist:hover {
+            background: rgba(64, 64, 64, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+        }
+        
+        .comparable-artist input[type="checkbox"] {
+            accent-color: #667eea;
+            width: 18px;
+            height: 18px;
+        }
+        
+        .comparable-info {
+            flex: 1;
+        }
+        
+        .comparable-name {
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .comparable-meta {
+            font-size: 0.8em;
+            color: #888;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(51, 51, 51, 0.6);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        
+        .checkbox-item:hover {
+            background: rgba(64, 64, 64, 0.8);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            accent-color: #667eea;
+            width: 18px;
+            height: 18px;
+        }
+        
+        .stats {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+        
+        .stats h3 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+        }
+        
+        .stat-label {
+            color: #bbb;
+        }
+        
+        .stat-value {
+            color: #00d4ff;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+        
+        #map {
+            flex: 1;
+            position: relative;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-message {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+        
+        .story-card {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.98) 0%, rgba(118, 75, 162, 0.98) 100%);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 1000;
+            min-width: 350px;
+            max-width: 400px;
+            border: 2px solid rgba(255,255,255,0.2);
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .story-card-header {
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.8);
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        
+        .story-card-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .story-card-details {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .story-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+        }
+        
+        .story-detail-icon {
+            font-size: 1.4em;
+        }
+        
+        .story-detail-text {
+            flex: 1;
+        }
+        
+        .story-detail-label {
+            font-size: 0.8em;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .story-detail-value {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .progress-bar-container {
+            margin-top: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            height: 8px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff 0%, #0ff 100%);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        
+        .btn-load-data {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+        
+        .btn-load-data:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+        }
+        
+        .btn-load-data:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="api-status">
+            <span class="api-indicator loading" id="apiStatus"></span>
+            <span id="apiStatusText">Initializing...</span>
+        </div>
+        <h1>🎵 TOUR INTELLIGENCE PLATFORM</h1>
+        <p>AI-Powered Tour Planning & Market Analysis for Any Artist</p>
+    </div>
+    
+    <div class="container">
+        <div class="controls">
+            <div class="tour-story-section">
+                <h3 style="color: white; margin-bottom: 15px; font-size: 1.3em;">🎬 Tour Story</h3>
+                <button id="tourStoryBtn" class="tour-story-btn">▶ Play Tour Story</button>
+                <div style="margin-top: 10px; font-size: 0.9em; color: rgba(255,255,255,0.8);">
+                    Experience the full tour journey
+                </div>
+            
+            <div class="control-group">
+                <h3>🎤 Artist Intelligence</h3>
+                <input type="text" id="artistNameInput" placeholder="Enter artist name..." style="
+                    width: 100%;
+                    padding: 12px;
+                    margin-bottom: 10px;
+                    border: 1px solid rgba(102, 126, 234, 0.5);
+                    border-radius: 8px;
+                    background: rgba(26, 26, 46, 0.8);
+                    color: white;
+                    font-size: 14px;
+                    box-sizing: border-box;
+                ">
+                <button id="loadArtistData" class="btn-load-data">Load Artist Data</button>
+                <div id="artistInfo" class="artist-info" style="display: none;">
+                    <div class="artist-stat">
+                        <span class="artist-stat-label">Artist:</span>
+                        <span class="artist-stat-value" id="artistName">--</span>
+                    </div>
+                    <div class="artist-stat">
+                        <span class="artist-stat-label">Popularity:</span>
+                        <span class="artist-stat-value" id="artistPopularity">--</span>
+                    </div>
+                    <div class="artist-stat">
+                        <span class="artist-stat-label">Followers:</span>
+                        <span class="artist-stat-value" id="artistFollowers">--</span>
+                    </div>
+                    <div class="artist-stat">
+                        <span class="artist-stat-label">Genres:</span>
+                        <span class="artist-stat-value" id="artistGenres">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎪 Venue Recommendations</h3>
+                <button id="loadVenues" class="btn-load-data">Find Venues</button>
+                <div id="venueList" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎭 Comparable Artists</h3>
+                <button id="loadComparable" class="btn-load-data">Load Comparable Tours</button>
+                <div id="comparableList"></div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Map Layers</h3>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="showConfirmed" checked>
+                        <span>Confirmed Shows</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="showRouting" checked>
+                        <span>Routing Lines</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="showGaps" checked>
+                        <span>Gap Analysis</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="showTargetZones" checked>
+                        <span>Target Zones</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <h3>📊 Tour Statistics</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Total Shows:</span>
+                    <span class="stat-value" id="totalShows">29</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">States Covered:</span>
+                    <span class="stat-value" id="statesCovered">10</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Miles:</span>
+                    <span class="stat-value" id="totalMiles">~8,500</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Critical Gaps:</span>
+                    <span class="stat-value" id="criticalGaps">5</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="map"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        // API Configuration - PASTE YOUR KEYS HERE
+        const API_CONFIG = {
+            spotify: {
+                clientId: '76567c4611d34304a92d2c3e15a2a274',
+                clientSecret: '3330b082ed99475bb2dac3dba9e35910'
+            },
+            ticketmaster: {
+                clientKey: '1KHzhXpwka1uZ1upvraVK5GpAWHxHG2g',
+                clientSecret: '65Zz6HsLbaZywx1G'
+            },
+            setlistfm: {
+                apiKey: '4QL-DnHOgXNQGtZ-xd5B9WvoqhP3ageHeL-F'
+            }
+        };
+
+        // Tour data
+        window.tourData = [
+            { date: '2025-10-16', venue: 'Blueroom', city: 'Bellingham, WA', lat: 48.7519, lng: -122.4787 },
+            { date: '2025-10-17', venue: 'Elks Ballroom/Chameleon', city: 'Tacoma, WA', lat: 47.2529, lng: -122.4443 },
+            { date: '2025-10-24', venue: 'Chameleon/Elk\'s Ballroom', city: 'Spokane, WA', lat: 47.6587, lng: -117.4260 },
+            { date: '2025-10-25', venue: 'Good Bones Kitchen', city: 'Arcata, CA', lat: 40.8665, lng: -124.0828 },
+            { date: '2025-10-26', venue: 'Good Bones Kitchen', city: 'Arcata, CA', lat: 40.8665, lng: -124.0828 },
+            { date: '2025-10-30', venue: 'Little Saint', city: 'Healdsburg, CA', lat: 38.6104, lng: -122.8695 },
+            { date: '2025-11-01', venue: 'Richards Goat', city: 'Arcata, CA', lat: 40.8665, lng: -124.0828 },
+            { date: '2025-11-02', venue: 'Heirloom', city: 'Salinas, CA', lat: 36.6777, lng: -121.6555 },
+            { date: '2025-11-02', venue: 'Showdown PDX', city: 'Portland, OR', lat: 45.5152, lng: -122.6784 },
+            { date: '2025-11-04', venue: 'Elks Temple', city: 'Tacoma, WA', lat: 47.2529, lng: -122.4443 },
+            { date: '2025-11-05', venue: 'Elks Temple', city: 'Tacoma, WA', lat: 47.2529, lng: -122.4443 },
+            { date: '2025-11-06', venue: 'Freakout Fest', city: 'Seattle, WA', lat: 47.6062, lng: -122.3321 },
+            { date: '2025-11-07', venue: 'Freakout Fest', city: 'Seattle, WA', lat: 47.6062, lng: -122.3321 },
+            { date: '2025-11-08', venue: 'Freakout Fest', city: 'Seattle, WA', lat: 47.6062, lng: -122.3321 },
+            { date: '2025-11-09', venue: 'Showdown PDX', city: 'Portland, OR', lat: 45.5152, lng: -122.6784 },
+            { date: '2025-11-14', venue: 'Offbeat', city: 'Reno, NV', lat: 39.5296, lng: -119.8138 },
+            { date: '2025-11-15', venue: 'Freight & Salvage', city: 'Berkeley, CA', lat: 37.8715, lng: -122.2730 },
+            { date: '2025-11-16', venue: 'Zebulon', city: 'Los Angeles, CA', lat: 34.0522, lng: -118.2437 },
+            { date: '2025-11-18', venue: 'CCA', city: 'Flagstaff, AZ', lat: 35.1983, lng: -111.6513 },
+            { date: '2025-11-19', venue: 'Lensic 360', city: 'Santa Fe, NM', lat: 35.6870, lng: -105.9378 },
+            { date: '2025-11-20', venue: 'Hi Dive', city: 'Denver, CO', lat: 39.7392, lng: -104.9903 },
+            { date: '2025-11-21', venue: 'Atrium', city: 'Denver, CO', lat: 39.7392, lng: -104.9903 },
+            { date: '2025-11-22', venue: 'Goosetown Tavern', city: 'Denver, CO', lat: 39.7392, lng: -104.9903 },
+            { date: '2025-11-23', venue: 'Atrium', city: 'Fort Collins, CO', lat: 40.5853, lng: -105.0844 },
+            { date: '2025-11-25', venue: 'farout', city: 'Austin, TX', lat: 30.2672, lng: -97.7431 },
+            { date: '2025-11-28', venue: 'State Room', city: 'Salt Lake City, UT', lat: 40.7608, lng: -111.8910 },
+            { date: '2025-11-29', venue: 'duck club', city: 'Boise, ID', lat: 43.6150, lng: -116.2023 },
+            { date: '2025-11-30', venue: 'duck club', city: 'Boise, ID', lat: 43.6150, lng: -116.2023 },
+            { date: '2025-12-02', venue: 'lucky dime', city: 'Everett, WA', lat: 47.9790, lng: -122.2021 }
+        ];
+
+        let map, confirmedLayer, routingLayer, gapsLayer, targetZonesLayer;
+        let storyMode = false;
+        let storyCard = null;
+        let artistData = null;
+        let venueRecommendations = [];
+        let comparableArtists = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof L === 'undefined') {
+                alert('Map library failed to load');
+                return;
+            }
+            initializeMap();
+            setupEventHandlers();
+            updateAPIStatus('connected', 'APIs Ready');
+        });
+
+        function updateAPIStatus(status, text) {
+            const indicator = document.getElementById('apiStatus');
+            const statusText = document.getElementById('apiStatusText');
+            indicator.className = `api-indicator ${status}`;
+            statusText.textContent = text;
+        }
+
+        function showLoading(message) {
+            const loader = document.createElement('div');
+            loader.className = 'loading-overlay';
+            loader.id = 'loadingOverlay';
+            loader.innerHTML = `
+                <div class="loading-spinner"></div>
+                <div class="loading-message">${message}</div>
+            `;
+            document.body.appendChild(loader);
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay')?.remove();
+        }
+
+        // SPOTIFY INTEGRATION
+        async function getSpotifyToken() {
+            const response = await fetch('https://accounts.spotify.com/api/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': 'Basic ' + btoa(API_CONFIG.spotify.clientId + ':' + API_CONFIG.spotify.clientSecret)
+                },
+                body: 'grant_type=client_credentials'
+            });
+            const data = await response.json();
+            return data.access_token;
+        }
+
+        async function searchSpotifyArtist(artistName) {
+            try {
+                const token = await getSpotifyToken();
+                const response = await fetch(
+                    `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`,
+                    {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }
+                );
+                const data = await response.json();
+                return data.artists.items[0];
+            } catch (error) {
+                console.error('Spotify error:', error);
+                return null;
+            }
+        }
+
+        async function getRelatedArtists(artistId, token) {
+            try {
+                const response = await fetch(
+                    `https://api.spotify.com/v1/artists/${artistId}/related-artists`,
+                    {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }
+                );
+                const data = await response.json();
+                return data.artists;
+            } catch (error) {
+                console.error('Related artists error:', error);
+                return [];
+            }
+        }
+
+
+
+        // TICKETMASTER INTEGRATION
+        async function searchVenues(city, state) {
+            try {
+                const response = await fetch(
+                    `https://app.ticketmaster.com/discovery/v2/venues?city=${city}&stateCode=${state}&apikey=${API_CONFIG.ticketmaster.clientKey}`
+                );
+                const data = await response.json();
+                return data._embedded?.venues || [];
+            } catch (error) {
+                console.error('Ticketmaster error:', error);
+                return [];
+            }
+        }
+
+        async function loadVenueRecommendations() {
+            showLoading('🎪 Finding venues in gap areas...');
+            
+            try {
+                venueRecommendations = [];
+                
+                // Look for venues in key gap cities
+                const gapCities = [
+                    { city: 'Eugene', state: 'OR', priority: 'critical' },
+                    { city: 'Sacramento', state: 'CA', priority: 'opportunity' },
+                    { city: 'Phoenix', state: 'AZ', priority: 'critical' },
+                    { city: 'San Diego', state: 'CA', priority: 'opportunity' },
+                    { city: 'Las Vegas', state: 'NV', priority: 'opportunity' }
+                ];
+                
+                for (const location of gapCities) {
+                    const venues = await searchVenues(location.city, location.state);
+                    
+                    venues.slice(0, 3).forEach(venue => {
+                        const score = calculateVenueScore(venue, location.priority);
+                        venueRecommendations.push({
+                            venue: venue,
+                            score: score,
+                            priority: location.priority,
+                            reasoning: `Fills ${location.city} market gap`
+                        });
+                    });
+                }
+                
+                // Sort by score
+                venueRecommendations.sort((a, b) => b.score - a.score);
+                
+                // Display recommendations
+                displayVenueRecommendations();
+                
+                hideLoading();
+                alert(`✅ Found ${venueRecommendations.length} venue recommendations!`);
+            } catch (error) {
+                hideLoading();
+                alert('❌ Error loading venues: ' + error.message);
+            }
+        }
+
+        function calculateVenueScore(venue, priority) {
+            let score = 50; // Base score
+            
+            // Priority bonus
+            if (priority === 'critical') score += 30;
+            else if (priority === 'opportunity') score += 20;
+            
+            // Activity bonus
+            if (venue.upcomingEvents && venue.upcomingEvents._total > 20) {
+                score += 20;
+            }
+            
+            return Math.min(score, 100);
+        }
+
+        function displayVenueRecommendations() {
+            const container = document.getElementById('venueList');
+            
+            if (venueRecommendations.length === 0) {
+                container.innerHTML = '<p style="color: #888; padding: 10px;">No recommendations yet</p>';
+                return;
+            }
+            
+            container.innerHTML = venueRecommendations.slice(0, 10).map(rec => `
+                <div class="venue-rec" onclick="flyToVenue(${rec.venue.location.latitude}, ${rec.venue.location.longitude})">
+                    <div class="venue-rec-name">${rec.venue.name}</div>
+                    <div class="venue-rec-location">📍 ${rec.venue.city.name}, ${rec.venue.state.stateCode}</div>
+                    <div class="venue-rec-score">Score: ${Math.round(rec.score)}/100 • ${rec.reasoning}</div>
+                </div>
+            `).join('');
+        }
+
+        function flyToVenue(lat, lng) {
+            map.flyTo([lat, lng], 12, { duration: 1.5 });
+        }
+
+        // SETLIST.FM INTEGRATION
+        async function getArtistTourHistory(artistName) {
+            try {
+                const response = await fetch(
+                    `https://api.setlist.fm/rest/1.0/search/setlists?artistName=${encodeURIComponent(artistName)}&p=1`,
+                    {
+                        headers: {
+                            'x-api-key': API_CONFIG.setlistfm.apiKey,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+                const data = await response.json();
+                return data.setlist || [];
+            } catch (error) {
+                console.error('Setlist.fm error:', error);
+                return [];
+            }
+        }
+
+        async function loadComparableData() {
+            showLoading('🎭 Loading comparable artist tour data...');
+            
+            try {
+                if (!comparableArtists || comparableArtists.length === 0) {
+                    hideLoading();
+                    alert('⚠️ Please load Spotify data first to find comparable artists');
+                    return;
+                }
+                
+                const comparableData = [];
+                
+                // Load tour history for top 5 similar artists
+                for (const artist of comparableArtists.slice(0, 5)) {
+                    const tourHistory = await getArtistTourHistory(artist.name);
+                    
+                    if (tourHistory.length > 0) {
+                        comparableData.push({
+                            artist: artist,
+                            showCount: tourHistory.length,
+                            venues: tourHistory.map(show => ({
+                                name: show.venue?.name,
+                                city: show.venue?.city?.name,
+                                state: show.venue?.city?.state,
+                                lat: show.venue?.city?.coords?.lat,
+                                lng: show.venue?.city?.coords?.long
+                            })).filter(v => v.lat && v.lng)
+                        });
+                    }
+                }
+                
+                // Display comparable artists
+                displayComparableArtists(comparableData);
+                
+                hideLoading();
+                alert(`✅ Loaded tour data for ${comparableData.length} comparable artists!`);
+            } catch (error) {
+                hideLoading();
+                alert('❌ Error loading comparable data: ' + error.message);
+            }
+        }
+
+        function displayComparableArtists(comparableData) {
+            const container = document.getElementById('comparableList');
+            
+            if (comparableData.length === 0) {
+                container.innerHTML = '<p style="color: #888; padding: 10px;">Load Spotify data first</p>';
+                return;
+            }
+            
+            container.innerHTML = comparableData.map((comp, index) => `
+                <div class="comparable-artist">
+                    <input type="checkbox" id="comp-${index}" 
+                           onchange="toggleComparableRoute(${index}, this.checked, ${JSON.stringify(comp.venues).replace(/"/g, '&quot;')})">
+                    <div class="comparable-info">
+                        <div class="comparable-name">${comp.artist.name}</div>
+                        <div class="comparable-meta">${comp.showCount} shows • ${comp.venues.length} venues mapped</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Store comparable layers
+        const comparableLayers = [];
+
+        function toggleComparableRoute(index, checked, venues) {
+            if (checked) {
+                // Add markers for this artist's venues
+                const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'];
+                const color = colors[index % colors.length];
+                
+                const layer = L.layerGroup();
+                
+                venues.forEach(venue => {
+                    if (venue.lat && venue.lng) {
+                        L.circleMarker([venue.lat, venue.lng], {
+                            radius: 6,
+                            fillColor: color,
+                            color: 'white',
+                            weight: 2,
+                            fillOpacity: 0.7
+                        }).bindPopup(`
+                            <strong>Comparable Artist Venue</strong><br>
+                            ${venue.name}<br>
+                            ${venue.city}, ${venue.state}
+                        `).addTo(layer);
+                    }
+                });
+                
+                layer.addTo(map);
+                comparableLayers[index] = layer;
+            } else {
+                // Remove layer
+                if (comparableLayers[index]) {
+                    map.removeLayer(comparableLayers[index]);
+                    comparableLayers[index] = null;
+                }
+            }
+        }
+
+        // MAP INITIALIZATION
+        function initializeMap() {
+            map = L.map('map').setView([40.0, -98.0], 4);
+            
+            // Try multiple tile providers for better compatibility
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            confirmedLayer = L.layerGroup().addTo(map);
+            routingLayer = L.layerGroup().addTo(map);
+            gapsLayer = L.layerGroup().addTo(map);
+            targetZonesLayer = L.layerGroup().addTo(map);
+
+            loadMapContent();
+        }
+
+        function loadMapContent() {
+            addConfirmedShows();
+            addRoutingLines();
+            addGapAnalysis();
+            updateStats();
+        }
+
+        const createShowIcon = (color = '#667eea', size = 20) => {
+            return L.divIcon({
+                html: `<div style="
+                    background: ${color}; 
+                    border: 3px solid white; 
+                    border-radius: 50%; 
+                    width: ${size}px; 
+                    height: ${size}px; 
+                    box-shadow: 0 0 15px ${color}66, 0 2px 8px rgba(0,0,0,0.4);
+                "></div>`,
+                className: '',
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2]
+            });
+        };
+
+        function addConfirmedShows() {
+            confirmedLayer.clearLayers();
+            window.tourData.forEach((show, index) => {
+                const marker = L.marker([show.lat, show.lng], {
+                    icon: createShowIcon('#00d4ff', 20)
+                }).addTo(confirmedLayer);
+
+                marker.bindPopup(`
+                    <div style="font-family: inherit;">
+                        <div style="font-size: 0.9em; color: #667eea; font-weight: 600;">Show #${index + 1} - ${show.date}</div>
+                        <div style="font-size: 1.1em; margin: 5px 0; font-weight: 500;">${show.venue}</div>
+                        <div style="font-size: 0.95em; color: #666;">${show.city}</div>
+                    </div>
+                `);
+            });
+        }
+
+        function addRoutingLines() {
+            routingLayer.clearLayers();
+            
+            for (let i = 0; i < window.tourData.length - 1; i++) {
+                const current = window.tourData[i];
+                const next = window.tourData[i + 1];
+                
+                L.polyline([
+                    [current.lat, current.lng],
+                    [next.lat, next.lng]
+                ], {
+                    color: '#00d4ff',
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '8, 12'
+                }).addTo(routingLayer);
+            }
+            
+            window.tourData.forEach((show, index) => {
+                const showNumber = L.divIcon({
+                    html: `<div style="
+                        background: #00d4ff;
+                        color: white;
+                        border-radius: 50%;
+                        width: 26px;
+                        height: 26px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                        font-weight: bold;
+                        border: 2px solid white;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                    ">${index + 1}</div>`,
+                    className: '',
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                });
+                
+                L.marker([show.lat, show.lng], { icon: showNumber }).addTo(routingLayer);
+            });
+        }
+
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 3959;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                     Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function addGapAnalysis() {
+            gapsLayer.clearLayers();
+            
+            for (let i = 0; i < window.tourData.length - 1; i++) {
+                const current = window.tourData[i];
+                const next = window.tourData[i + 1];
+                
+                const distance = calculateDistance(current.lat, current.lng, next.lat, next.lng);
+                const currentDate = new Date(current.date);
+                const nextDate = new Date(next.date);
+                const daysDiff = Math.floor((nextDate - currentDate) / (1000 * 60 * 60 * 24));
+                
+                let color = '#4CAF50';
+                let priority = 'optimization';
+                
+                if (distance > 400 || daysDiff > 4) {
+                    color = '#FF3B30';
+                    priority = 'critical';
+                } else if (distance > 250 || daysDiff > 2) {
+                    color = '#FF9500';
+                    priority = 'opportunity';
+                }
+                
+                if (distance > 150) {
+                    const midLat = (current.lat + next.lat) / 2;
+                    const midLng = (current.lng + next.lng) / 2;
+                    
+                    const gapMarker = L.circleMarker([midLat, midLng], {
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.8,
+                        radius: 12,
+                        weight: 3
+                    }).addTo(gapsLayer);
+                    
+                    gapMarker.bindPopup(`
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.2em; font-weight: 600; color: ${color};">
+                                ${Math.round(distance)} miles
+                            </div>
+                            <div style="margin-top: 5px;">${daysDiff} days apart</div>
+                            <div style="margin-top: 8px; font-size: 0.9em;">
+                                #${i + 1} ${current.city} → #${i + 2} ${next.city}
+                            </div>
+                        </div>
+                    `);
+                }
+            }
+        }
+
+        function updateStats() {
+            let totalDistance = 0;
+            let criticalGaps = 0;
+            
+            for (let i = 0; i < window.tourData.length - 1; i++) {
+                const current = window.tourData[i];
+                const next = window.tourData[i + 1];
+                const distance = calculateDistance(current.lat, current.lng, next.lat, next.lng);
+                totalDistance += distance;
+                
+                const currentDate = new Date(current.date);
+                const nextDate = new Date(next.date);
+                const daysDiff = Math.floor((nextDate - currentDate) / (1000 * 60 * 60 * 24));
+                
+                if (distance > 400 || daysDiff > 4) {
+                    criticalGaps++;
+                }
+            }
+            
+            document.getElementById('totalShows').textContent = window.tourData.length;
+            
+            const uniqueStates = [...new Set(window.tourData.map(show => 
+                show.city.split(',')[1]?.trim()
+            ))].filter(Boolean);
+            document.getElementById('statesCovered').textContent = uniqueStates.length;
+            
+            document.getElementById('totalMiles').textContent = `~${Math.round(totalDistance).toLocaleString()}`;
+            document.getElementById('criticalGaps').textContent = criticalGaps;
+        }
+
+        // TOUR STORY ANIMATION
+        async function playTourStory() {
+            const btn = document.getElementById('tourStoryBtn');
+            
+            if (storyMode) {
+                stopTourStory();
+                return;
+            }
+            
+            storyMode = true;
+            btn.textContent = '⏸ Pause Story';
+            btn.classList.add('playing');
+            
+            for (let i = 0; i < window.tourData.length; i++) {
+                if (!storyMode) break;
+                await animateToShow(i);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+            
+            if (storyMode) {
+                showFinalSummary();
+                setTimeout(stopTourStory, 5000);
+            }
+        }
+
+        async function animateToShow(index) {
+            if (!storyMode) return;
+            
+            const show = window.tourData[index];
+            
+            map.flyTo([show.lat, show.lng], 7, {
+                duration: 1.5,
+                easeLinearity: 0.25
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            displayStoryCard(show, index);
+        }
+
+        function displayStoryCard(show, index) {
+            if (storyCard) storyCard.remove();
+            
+            const distance = index > 0 ? 
+                Math.round(calculateDistance(
+                    window.tourData[index-1].lat, 
+                    window.tourData[index-1].lng,
+                    show.lat, 
+                    show.lng
+                )) : 0;
+            
+            const daysSinceLast = index > 0 ?
+                Math.floor((new Date(show.date) - new Date(window.tourData[index-1].date)) / (1000*60*60*24)) : 0;
+            
+            storyCard = document.createElement('div');
+            storyCard.className = 'story-card';
+            storyCard.innerHTML = `
+                <div class="story-card-header">SHOW #${index + 1} OF ${window.tourData.length}</div>
+                <div class="story-card-title">${show.venue}</div>
+                <div class="story-card-details">
+                    <div class="story-detail-item">
+                        <div class="story-detail-icon">📍</div>
+                        <div class="story-detail-text">
+                            <div class="story-detail-label">Location</div>
+                            <div class="story-detail-value">${show.city}</div>
+                        </div>
+                    </div>
+                    <div class="story-detail-item">
+                        <div class="story-detail-icon">📅</div>
+                        <div class="story-detail-text">
+                            <div class="story-detail-label">Date</div>
+                            <div class="story-detail-value">${show.date}</div>
+                        </div>
+                    </div>
+                    ${index > 0 ? `
+                    <div class="story-detail-item">
+                        <div class="story-detail-icon">🚗</div>
+                        <div class="story-detail-text">
+                            <div class="story-detail-label">From Last Show</div>
+                            <div class="story-detail-value">${distance} miles • ${daysSinceLast} days</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: ${((index + 1) / window.tourData.length) * 100}%"></div>
+                </div>
+            `;
+            
+            document.getElementById('map').appendChild(storyCard);
+        }
+
+        function showFinalSummary() {
+            if (storyCard) storyCard.remove();
+            
+            let totalDistance = 0;
+            for (let i = 0; i < window.tourData.length - 1; i++) {
+                totalDistance += calculateDistance(
+                    window.tourData[i].lat, window.tourData[i].lng,
+                    window.tourData[i+1].lat, window.tourData[i+1].lng
+                );
+            }
+            
+            storyCard = document.createElement('div');
+            storyCard.className = 'story-card';
+            storyCard.innerHTML = `
+                <div class="story-card-header">🎉 TOUR COMPLETE</div>
+                <div class="story-card-title">Tour Summary</div>
+                <div class="story-card-details">
+                    <div class="story-detail-item">
+                        <div class="story-detail-icon">🎵</div>
+                        <div class="story-detail-text">
+                            <div class="story-detail-label">Total Shows</div>
+                            <div class="story-detail-value">${window.tourData.length} performances</div>
+                        </div>
+                    </div>
+                    <div class="story-detail-item">
+                        <div class="story-detail-icon">🗺️</div>
+                        <div class="story-detail-text">
+                            <div class="story-detail-label">Total Distance</div>
+                            <div class="story-detail-value">${Math.round(totalDistance).toLocaleString()} miles</div>
+                        </div>
+                    </div>
+                    <div class="story-detail-item">
+                        <div class="story-detail-icon">📅</div>
+                        <div class="story-detail-text">
+                            <div class="story-detail-label">Tour Duration</div>
+                            <div class="story-detail-value">54 days</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; text-align: center; font-size: 0.9em; color: rgba(255,255,255,0.8);">
+                    Thank you for experiencing the journey!
+                </div>
+            `;
+            
+            document.getElementById('map').appendChild(storyCard);
+        }
+
+        function stopTourStory() {
+            storyMode = false;
+            const btn = document.getElementById('tourStoryBtn');
+            btn.textContent = '▶ Play Tour Story';
+            btn.classList.remove('playing');
+            
+            if (storyCard) {
+                storyCard.remove();
+                storyCard = null;
+            }
+            
+            map.setView([40.0, -98.0], 4);
+        }
+
+        // EVENT HANDLERS
+        function setupEventHandlers() {
+            document.getElementById('tourStoryBtn').addEventListener('click', playTourStory);
+            document.getElementById('loadArtistData').addEventListener('click', loadArtistData);
+            document.getElementById('loadVenues').addEventListener('click', loadVenueRecommendations);
+            document.getElementById('loadComparable').addEventListener('click', loadComparableData);
+            
+            document.getElementById('showConfirmed').addEventListener('change', (e) => {
+                e.target.checked ? map.addLayer(confirmedLayer) : map.removeLayer(confirmedLayer);
+            });
+
+            document.getElementById('showRouting').addEventListener('change', (e) => {
+                e.target.checked ? map.addLayer(routingLayer) : map.removeLayer(routingLayer);
+            });
+
+            document.getElementById('showGaps').addEventListener('change', (e) => {
+                e.target.checked ? map.addLayer(gapsLayer) : map.removeLayer(gapsLayer);
+            });
+
+            document.getElementById('showTargetZones').addEventListener('change', (e) => {
+                e.target.checked ? map.addLayer(targetZonesLayer) : map.removeLayer(targetZonesLayer);
+            });
+        }
+    </script>
+</body>
+</html>
